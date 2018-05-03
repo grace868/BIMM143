@@ -1,0 +1,111 @@
+---
+title: "9-Exercise (hclus & kmeans)"
+author: "Grace Lee"
+date: "May 1, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Scale data
+```{r}
+scale_data <- scale(wisc.data)
+```
+
+#Calculate distance
+```{r}
+dist_data <- dist(scale_data)
+```
+
+```{r}
+wisc.hclust <- hclust(dist_data)
+```
+
+# Plot hc & use cut the tree so that it has 4 clusters
+```{r}
+plot(wisc.hclust)
+wisc.hclust.clusters <- cutree(wisc.hclust, k = 4)
+abline(h =20, col = "red")
+```
+
+```{r}
+wisc.pr.hclust
+table(wisc.hclust.clusters)
+```
+
+# How many M or 1 (cancer) and 0 (non-cancer) are in each cluster
+```{r}
+table(wisc.hclust.clusters, diagnosis)
+```
+
+#kmeans
+```{r}
+wisc.km <- kmeans(scale(wisc.data), centers = 2, nstart = 20)
+wisc.km
+```
+
+# Plot scree plot
+```{r}
+wss <- 0
+for (i in 1:15){
+  wisc.km1 <- kmeans(scale(wisc.data), centers = i, nstart = 20)
+  wss[i] <- wisc.km1$tot.withinss
+}
+wss
+plot(1:15, wss, type = "b")
+```
+
+# Compare cluster membership of k-means model
+```{r}
+table(wisc.km$cluster, diagnosis)
+```
+# Cluster 2 has 343 patients that are malignant and 37 patients that are benign
+
+#Compare kmeans with hclust
+```{r}
+table(wisc.hclust.clusters, wisc.km$cluster)
+```
+
+#Section 5
+
+## Use the distance along the first 7 PCs for clustering i.e. wisc.pr$x[, 1:7]
+```{r}
+wisc.pr.hclust <- hclust( dist(wisc.pr$x[,1:7]) )
+plot(wisc.pr.hclust)
+```
+
+#Cut this hierarchical clustering model into 4 clusters and assign the results to wisc.pr.hclust.clusters
+```{r}
+wisc.pr.hclust.clusters <- cutree(wisc.pr.hclust, k=4)
+```
+
+# Plot
+```{r}
+plot(wisc.pr$x[, c(1, 2)], col = wisc.pr.hclust.clusters, pch = as.vector(wisc.df$diagnosis), xlab = "PC1", ylab = "PC2")
+```
+
+
+#Q14. How well does the newly created model with four clusters separate out the two diagnoses?
+```{r}
+table(wisc.pr.hclust.clusters, diagnosis)
+```
+
+#Q15. How well do the k-means and hierarchical clustering models you created in previous sections (i.e. before PCA) do in terms of separating the diagnoses? Again, use the table() function to compare the output of each model (wisc.km$cluster and wisc.hclust.clusters) with the vector containing the actual diagnoses.
+```{r}
+table(wisc.km$cluster, diagnosis)
+table(wisc.hclust.clusters, diagnosis)
+```
+
+# do kmean on pca
+# why is it the same as kmean clustering on data?
+```{r}
+wisc.pr.km <- kmeans(wisc.pr$x, center = 2, nstart = 20)
+```
+
+```{r}
+table(wisc.pr.km$cluster, diagnosis)
+```
+
