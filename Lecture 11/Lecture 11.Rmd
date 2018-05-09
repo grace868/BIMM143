@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Section 1
 ## PDB statistics
 
-#Q1
+# Q1
 Download CSV file from PDB database. Read this into R and determine fraction of X-ray structures.
 ```{r}
 pdb.stats <- read.csv("Data Export Summary.csv")
@@ -25,7 +25,7 @@ names(percent) <- pdb.stats$Experimental.Method
 percent
 ```
 
-#Q2 Ans: 118 (found on webpage)
+# Q2 Ans: 118 (found on webpage)
 
 ## Section 3
 # Working with Bio3D
