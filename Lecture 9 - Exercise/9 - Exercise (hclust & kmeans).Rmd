@@ -32,7 +32,6 @@ abline(h =20, col = "red")
 ```
 
 ```{r}
-wisc.pr.hclust
 table(wisc.hclust.clusters)
 ```
 
@@ -44,7 +43,6 @@ table(wisc.hclust.clusters, diagnosis)
 #kmeans
 ```{r}
 wisc.km <- kmeans(scale(wisc.data), centers = 2, nstart = 20)
-wisc.km
 ```
 
 # Plot scree plot
