@@ -52,6 +52,17 @@ res <- read.pdb("all.pdbqt", multi = TRUE)
 write.pdb(res, "results.pdb")
 ```
 
+Select non-hydrogen atoms from our docking result file
+```{r}
+inds.res<- atom.select(res, "noh")
+inds.res
+inds.MK <- atom.select(lig, "noh")
+inds.MK
+```
 
 
+```{r}
+#res$xyz[, inds.res$xyz]
+rmsd(lig, res$xyz[ ,inds.res$xyz])
+```
 
