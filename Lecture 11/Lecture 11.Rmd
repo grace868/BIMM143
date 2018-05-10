@@ -2,17 +2,19 @@
 title: "Lecture 11 - new"
 author: "Grace Lee"
 date: "May 8, 2018"
-output: html_document
+output: 
+  html_document:
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Section 1
+# Section 1
 ## PDB statistics
 
-# Q1
+### Q1
 Download CSV file from PDB database. Read this into R and determine fraction of X-ray structures.
 ```{r}
 pdb.stats <- read.csv("Data Export Summary.csv")
@@ -25,12 +27,12 @@ names(percent) <- pdb.stats$Experimental.Method
 percent
 ```
 
-# Q2 Ans: 118 (found on webpage)
+### Q2 Ans: 118 (found on webpage)
 
-## Section 3
-# Working with Bio3D
+# Section 3
+## Working with Bio3D
 
-# Section 3.1
+## Section 3.1
 Load bio3D
 ```{r}
 library(bio3d)
@@ -38,23 +40,23 @@ library(bio3d)
 
 List function of bio3D package
 
-# Section 3.2
+## Section 3.2
 To see example of functions
 ```{r}
 #example("plot.bio3d")
 ```
 
-# Section 3.3
+## Section 3.3
 Read 1hsg
 ```{r}
 pdb <- read.pdb("1hsg")
 pdb
 ```
-# Question 6
+### Question 6
 172 non-protein residues (HOH and MK1)
 1514 protein residues
 
-# Question 6
+### Question 6
 ```{r}
 sum(pdb$atom$resid == "MK1") + sum(pdb$atom$resid == "HOH")
 nrow (pdb$atom) - (sum(pdb$atom$resid == "MK1") + sum(pdb$atom$resid == "HOH"))
@@ -62,7 +64,7 @@ nrow (pdb$atom) - (sum(pdb$atom$resid == "MK1") + sum(pdb$atom$resid == "HOH"))
 non-protein residues: water & MK1
 aa residues: 1514
 
-# Section 3.4
+## Section 3.4
 ```{r}
 attributes(pdb)
 head(pdb$atom)
@@ -76,47 +78,47 @@ pdb$atom$elety[1:2]
 # Which allows us to do the following
 plot.bio3d(pdb$atom$b[pdb$calpha], sse = pdb, typ = "l", ylab = "B-factor")
 ```
-# Question 7
+### Question 7
 ```{r}
 str(pdb$atom)
 ```
-# Question 7
+### Question 7
 data frame
 
 
-# Print a summary of the coordinate data in $xyz
+Print a summary of the coordinate data in $xyz
 ```{r}
 pdb$xyz
 ```
 
-# Examine the row and column dimensions
+Examine the row and column dimensions
 ```{r}
 dim(pdb$xyz)
 ```
 
-# Print coordinates for the first two atom
+Print coordinates for the first two atom
 ```{r}
-pdb$xzy[ 1, atom2xyz(1:2ss)]
+pdb$xzy[ 1, atom2xyz(1:2)]
 ```
 
-# Section 3.5
-# Select all C-alpha atoms (return their indices)
+## Section 3.5
+Select all C-alpha atoms (return their indices)
 ```{r}
 inds <- atom.select(pdb, "calpha")
 inds
 ```
 
-# Print details of the first few selected atoms
+Print details of the first few selected atoms
 ```{r}
 head(pdb$atom[inds$atom,])
 ```
 
-# Print details of the first few selected xyz coordinates
+Print details of the first few selected xyz coordinates
 ```{r}
 head(pdb$xyz[ , inds$xyz])
 ```
 
-# Select other strings
+Select other strings
 ```{r}
 # Select chain A
 a.inds <- atom.select(pdb, chain = "A")
@@ -126,7 +128,7 @@ ca.inds <- atom.select(pdb, "calpha", chain = "A")
 cab.inds <- atom.select (pdb, elety= c("CA", "CB"), chain = "A", resno = 10:20)
 ```
 
-# Question 8
+### Question 8
 Looks good so lets continue to trim our PDB and write a new C-alpha only PDB file for viewing in VMD
 ```{r}
 ca.pdb <- trim.pdb(pdb, inds=inds)
@@ -148,25 +150,86 @@ Extract and align the chains we are interested in
 pdbs <- pdbaln(files, fit = TRUE, exefile = "C:/Users/Gracie/Downloads/muscle.exe")
 pdbs
 ```
-
-# Question 8
+### Question 8
 fit = TRUE in the rmsd() function performs coordinate superpostition before RMSD calculation
+
+```{r}
+summary(pdbs)
+```
+
+Access the first 5 rows, and 8 columns
+```{r}
+pdbs$ali[1:5, 1:8]
+```
+
+Associated residues numbers
+```{r}
+pdbs$resno[1:5, 1:8]
+```
+
+Inspect alignment for gaps
+```{r}
+gaps <- gap.inspect(pdbs$ali)
+gaps
+```
+
+Indices of non-gap columns
+```{r}
+head(gaps$f.inds)
+```
+
+Access non-gap columns
+```{r}
+pdbs$ali[,gaps$f.inds]
+```
+## Section 4.3
+
+Calculate sequence identity
+```{r}
+seqidentity(pdbs)
+```
+
+Calculate RMSD
+```{r}
+rd <- rmsd(pdbs)
+rownames(rd) <- c("1TND_B", "1AGR_A", "1GG2_A", "1KJY_A", "4G5Q_A")
+colnames(rd) <- c("1TND_B", "1AGR_A", "1GG2_A", "1KJY_A", "4G5Q_A")
+```
+
+Clustering
+```{r}
+hc <- hclust(as.dist(rd))
+grps <- cutree(hc, k = 3)
+hc
+grps
+```
+
+plot results as dendrogram
+```{r}
+hclustplot(hc, k = 3)
+```
+
+Perform PCA
+```{r}
+pc <- pca(pdbs)
+plot(pc, col = grps)
+```
 
 # Section 5
 
-#Get aa seq of 1AKE
+Get aa seq of 1AKE
 ```{r}
 aa <- get.seq("1ake_A")
 aa
 ```
 
-# Blast or hmmer search
-# cache = TRUE -> stores the result
+Blast or hmmer search
+cache = TRUE -> stores the result
 ```{r, cache= TRUE}
 b <- blast.pdb(aa)
 ```
 
-# Plot a summary of search resuls
+Plot a summary of search resuls
 ```{r}
 hits <- plot(b)
 # a quantified view of similarity between the query and the results
@@ -177,23 +240,43 @@ attributes(hits)
 head(hits$pdb.id) #view of the most similar proteins
 ```
 
-# Fetch files
+Fetch files
 ```{r}
-files <- get.pdb(hits$pdb.id, path = "pdbs", split = TRUE, gzip = TRUE)
-```
-#Align structures
-```{r}
-pdbs <- pdbaln(files, fit = TRUE, exefile = "C:/Users/Gracie/Downloads/muscle.exe")
+files1 <- get.pdb(hits$pdb.id, path = "pdbs", split = TRUE, gzip = TRUE)
 ```
 
-# Vector containing PDB codes
+Align structures
 ```{r}
-ids <- basename.pdb(pdbs$id)
+pdbs1 <- pdbaln(files1, fit = TRUE, exefile = "C:/Users/Gracie/Downloads/muscle.exe")
 ```
 
-# Draw schematic alignment
+Vector containing PDB codes
 ```{r}
-plot(pdbs, labels = ids)
+ids1 <- basename.pdb(pdbs1$id)
+```
+
+Draw schematic alignment
+```{r}
+plot(pdbs1, labels = ids1)
+```
+
+## Section 5.2
+
+Calculate seqeuence conservation
+```{r}
+cons <- conserv(pdbs1, method = "entropy22")
+cons
+```
+
+SEE anotations
+```{r}
+sse <- pdbs2sse(pdbs1, ind = 1, rm.gaps = FALSE)
+sse
+```
+
+Plot conservation per residue
+```{r}
+plotb3(cons, sse = sse, ylab = "Sequence entropy")
 ```
 
 
