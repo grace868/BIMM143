@@ -1,0 +1,50 @@
+---
+title: "Lecture 12"
+author: "Grace Lee"
+date: "May 10, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Section 1.1
+
+load bio3D package and download 1HSG pdb file
+```{r}
+library(bio3d)
+file.name <- get.pdb("1hsg")
+```
+
+Read pdb structure
+```{r}
+hiv <- read.pdb(file.name)
+hiv
+```
+
+##Q1
+non-protein residue: water and MK1
+What does resid correspond to and how would you get a listing of all reside values in this structure?
+```{r}
+hiv$atom
+```
+
+# Section 1.2
+
+Select out protein and ligand only
+```{r}
+prot <- trim.pdb(hiv, "protein")
+lig <- trim.pdb(hiv, "ligand")
+prot
+lig
+```
+
+Write out these new pdb files
+```{r}
+write.pdb(prot, file = "1hsg_protein.pdb")
+write.pdb(lig, "1hsg_ligand.pdb")
+```
+
+
+
