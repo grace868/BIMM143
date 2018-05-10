@@ -46,5 +46,12 @@ write.pdb(prot, file = "1hsg_protein.pdb")
 write.pdb(lig, "1hsg_ligand.pdb")
 ```
 
+# Section 2.3
+
+process docking results fot VMD display
+```{r}
+res <- read.pdb("all.pdbqt", multi = TRUE)
+write.pdb(res, "results.pdb")
+```
 
 
