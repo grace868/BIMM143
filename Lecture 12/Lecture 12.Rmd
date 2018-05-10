@@ -20,7 +20,6 @@ file.name <- get.pdb("1hsg")
 Read pdb structure
 ```{r}
 hiv <- read.pdb(file.name)
-hiv
 ```
 
 ##Q1
@@ -46,5 +45,9 @@ write.pdb(prot, file = "1hsg_protein.pdb")
 write.pdb(lig, "1hsg_ligand.pdb")
 ```
 
+# Section 1.3
+```{r}
+
+```
 
 
