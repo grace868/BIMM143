@@ -2,10 +2,6 @@
 title: "9-Exercise (PCA)"
 author: "Grace Lee"
 date: "May 1, 2018"
-output: 
-  html_document:
-    keep_md: yes
----
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
