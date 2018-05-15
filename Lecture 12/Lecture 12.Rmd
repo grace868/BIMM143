@@ -47,7 +47,16 @@ write.pdb(lig, "1hsg_ligand.pdb")
 ```
 
 # Section 1.3
-done on class computer 
+done on class computer (b/c could not downlad ADT from MGLTools on PC)
+
+## Q3
+charges make sense
+
+# Section 1.4
+done on class computer
+
+# Section 1.5
+created config.txt file
 
 # Section 2.3
 processing docking results for VMD display
