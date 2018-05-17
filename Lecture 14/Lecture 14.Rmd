@@ -1,0 +1,313 @@
+---
+title: "Lecture 14"
+author: "Grace Lee"
+date: "May 17, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Trascriptomics and the analysis of RNA-seq data
+
+Import countData and colData into R
+```{r}
+counts <- read.csv("data/airway_scaledcounts.csv", stringsAsFactors = FALSE)
+metadata <- read.csv("data/airway_metadata.csv", stringsAsFactors = FALSE)
+```
+
+```{r}
+head(counts)
+```
+
+```{r}
+head(metadata)
+```
+
+# Toy differential gene expession
+```{r}
+View(metadata)
+```
+
+```{r}
+control <- metadata[metadata[,"dex"] == "control",]
+control.mean <- rowSums( counts[ ,control$id])/length(control$id)
+names(control.mean) <- counts$ensgene
+```
+
+**Q1**
+divided by 4 always even when adding more samples
+```{r}
+table(metadata$dex)
+length(control$id)
+```
+
+**Q2**
+```{r}
+treated <- metadata[metadata[, "dex"] == "treated",]
+treated.mean <- rowSums( counts[ ,treated$id])/length(treated$id)
+names(treated.mean) <- counts$ensgene
+```
+
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+colSums(meancounts)
+```
+
+**Q3**
+```{r}
+plot(control.mean, treated.mean, xlab = "Control", ylab = "Treated")
+# only see some points because the points overlap
+```
+
+
+```{r}
+plot(control.mean, treated.mean, log = "xy", xlab = "log Control", ylab = "log Treated")
+```
+
+Calculate log2foldchange, add it to out meancounts data.frame
+```{r}
+meancounts$log2fc <- log2(meancounts[, "treated.mean"]/meancounts[, "control.mean"])
+head(meancounts)
+```
+
+```{r}
+zero.vals <- which(meancounts[, 1:2]==0, arr.ind= TRUE)
+# arr.ind --> (array.index) give row and column index
+# inspect below for example
+  #x <- matrix(c(1:10), ncol = 2, byrow = 1)
+  #x[5,2] <- 0
+  #x
+  #which(x ==0)
+  #which(x ==0, arr.ind = TRUE)
+
+to.rm <- unique(zero.vals[,1])
+mycounts <- meancounts[-to.rm,]
+head(mycounts)
+                
+```
+
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < (-2)
+head(up.ind)
+head(down.ind)
+```
+
+**Q5** 
+```{r}
+sum(up.ind == "TRUE")
+sum(down.ind =="TRUE")
+```
+
+```{r}
+paste("Number of UP genes:", sum(up.ind))
+paste("Number of DOWN genes:", sum(down.ind))
+```
+
+# Adding annotation data
+```{r}
+anno <- read.csv("data/annotables_grch38.csv")
+head(anno)
+```
+
+**Q6**
+```{r}
+merge(mycounts, anno, by.x = "row.names", by.y = "ensgene")
+```
+
+
+```{r}
+columns(org.Hs.eg.db)
+```
+
+```{r}
+mycounts$symbol <- mapIds(org.Hs.eg.db,
+                     keys=row.names(mycounts),
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+```
+
+**Q7**
+```{r}
+mycounts$entrez <- mapIds(org.Hs.eg.db,
+                     keys=row.names(mycounts),
+                     column="ENTREZID",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+```
+
+```{r}
+mycounts$uniprot <- mapIds(org.Hs.eg.db,
+                     keys=row.names(mycounts),
+                     column="UNIPROT",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+```
+
+**Q8**
+
+Load Bioconductor's annotation packages
+```{r}
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+```
+
+```{r}
+head(mycounts[up.ind,])
+```
+
+# DeSeq2 analysis
+```{r}
+library(DESeq2)
+citation("DESeq2")
+```
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~dex, 
+                              tidy=TRUE)
+dds
+```
+
+Running DESeq pipelin on the dds object
+```{r}
+dds <- DESeq(dds)
+```
+
+```{r}
+res <- results(dds)
+res
+```
+
+```{r}
+summary(res)
+```
+
+```{r}
+resOrdered <- res[order(res$pvalue),]
+```
+
+```{r}
+res05 <- results(dds, alpha = 0.05)
+summary(res05)
+```
+
+**Q9**
+How many are significant with an adjusted p-value < 0.05?
+```{r}
+resSig05 <- subset(as.data.frame(res), padj < 0.05)
+nrow(resSig05)
+```
+ 
+ **Q9**
+How many are significant with an adjusted p-value < 0.01?
+```{r}
+resSig01 <- subset(as.data.frame(res), padj < 0.01)
+nrow(resSig01)
+```
+
+**Q10**
+Add annotation from previous anno object using merge() function
+```{r}
+merge(resSig01, anno, by.x = "row.names", by.y = "ensgene")
+```
+
+Add annotation to resSig01 using mapIds() function
+```{r}
+head(resSig01)
+```
+
+```{r}
+resSig01$symbol <- mapIds(org.Hs.eg.db,
+                     keys=row.names(resSig01),
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+```
+
+```{r}
+resSig01$entrez <- mapIds(org.Hs.eg.db,
+                     keys=row.names(resSig01),
+                     column="ENTREZID",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+```
+```{r}
+resSig01$uniprot<- mapIds(org.Hs.eg.db,
+                     keys=row.names(resSig01),
+                     column="UNIPROT",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+```
+
+```{r}
+resSig01
+```
+
+```{r}
+ord <- order( resSig01$padj)
+head(resSig01[ord,])
+```
+
+Write out ordered significant results w/ annotations
+```{r}
+write.csv(resSig01[ord,], "signif01_results,csv")
+```
+
+# Data Visualization
+```{r}
+i <- grep("CRISPLD2", resSig01$symbol)
+resSig01[i,]
+```
+```{r}
+rownames( resSig01[i,])
+```
+
+```{r}
+plotCounts(dds, gene = "ENSG00000103196", intgroup = "dex")
+```
+
+```{r}
+d <- plotCounts(dds, gene="ENSG00000103196", intgroup = "dex", returnData = TRUE)
+head(d)
+```
+
+```{r}
+boxplot(count ~dex, data = d)
+```
+
+```{r}
+library(ggplot2)
+ggplot(d, aes(dex, count)) + geom_boxplot(aes(fill = dex)) + scale_y_log10() +ggtitle("CRISPLD2")
+```
+
+#MA & Volcano plots
+```{r}
+res$sig <- res$padj < 0.05
+table(res$sig)
+```
+
+```{r}
+sum(is.na(res$sig))
+```
+
+```{r}
+plotMA(res, ylim=c(-2,2))
+```
+
+```{r}
+resLFC <- lfcShrink(dds, coef=2)
+resLFC
+```
+
+# Volcano plor
+```{r}
+ggplot(as.data.frame(res), aes(log2FoldChange, -1*log10(pvalue), col=sig)) + 
+    geom_point() + 
+    ggtitle("Volcano plot")
+```
+
