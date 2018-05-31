@@ -1,0 +1,78 @@
+---
+title: "Lecture 18 (Part 1)"
+author: "Grace Lee"
+date: "May 31, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Section 1
+1. 4008
+2. R175H, R273C, R248Q
+3. DNA binding domain
+4. Lung, Ovary, Head and Neck, Brain, Breast, Colorectal; 25 primary sites
+5. G12D
+6. quite common, 137 cases
+6. TCGA-COAD
+7. KRAS (43%), TP53(54.25%)
+8. 2
+
+# Section 2
+Load packages
+```{r}
+library(GenomicDataCommons)
+library(maftools)
+```
+check GDC status
+```{r}
+GenomicDataCommons::status()
+```
+
+# Section 3
+```{r}
+cases_by_project <- cases() %>%
+  facet("project.project_id") %>%
+  aggregations()
+head(cases_by_project)
+```
+
+change to vector form
+```{r}
+x <- cases_by_project$project.project_id
+x
+```
+
+does not produce correct representation
+```{r}
+mycols <- rep("blue", length = x)
+mycols[which(x$key =="TCGA-PAAD")] <- "red"
+barplot(x$doc_count, names.arg = x$key, las = 2, log = "y", col = mycols)
+```
+
+
+```{r}
+x <- cases_by_project$project.project_id$doc_count
+mylabels <- cases_by_project$project.project_id$key
+mycols <- rep("lightblue", length(x))
+mycols[which(mylabels == "TCGA-PAAD")] <- "red"
+par(mar=c(8, 5, 1, 1))
+barplot(x, names.arg = mylabels, log = "y", las = 2, col = mycols)
+```
+
+code does not work
+```{r}
+file_records <- files() %>%
+  filter(~ cases.project.project_id == "TCGA-PAAD" &
+    data_type == "Gene Expression Quantification" &
+    analysis.workflow_type == "HTSeq - Counts") #%>%
+  #response_all()
+```
+
+```{r}
+View(file_records)
+```
+
+code beyond this will not work

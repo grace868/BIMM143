@@ -1,0 +1,66 @@
+---
+title: "Lecture 18 (Part 2)"
+author: "Grace Lee"
+date: "May 31, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Section 1
+```{r}
+library(bio3d)
+seqs <- read.fasta("lecture18_sequences.fa")
+seqs
+```
+
+Calculate positional identity scores
+```{r}
+ide <- conserv(seqs$ali, method = "identity")
+mutant.sites <- which(ide<1)
+```
+
+Exclude gap positions from analysis
+```{r}
+gap <- gap.inspect(seqs)
+mutant.sites <- mutant.sites[mutant.sites %in% gap$f.inds]
+
+mutant.sites
+```
+
+come up with suitable names for these subsequences based on the mutation
+```{r}
+#Make a "names label for our" output sequences (one per mutant)
+mutant.names <- paste0(seqs$ali["P53_wt", mutant.sites], mutant.sites, seqs$ali["P53_mutant", mutant.sites])
+
+mutant.names
+```
+
+Sequence positions surrounding each mutant site
+```{r}
+start.position <- mutant.sites - 8
+end.position <- mutant.sites +8
+```
+
+Blank matrix to store sub-sequences 
+```{r}
+store.seqs <- matrix("-", nrow= length(mutant.sites), ncol= 17)
+rownames(store.seqs) <- mutant.names
+```
+
+Extract each sub-sequence
+```{r}
+for (i in 1:length(mutant.sites)){
+  store.seqs[i, ] <- seqs$ali["P53_mutant", start.position[i]: end.position[i]]
+}
+
+store.seqs
+```
+
+# Section 2
+```{r}
+
+```
+

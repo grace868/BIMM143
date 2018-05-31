@@ -1,0 +1,301 @@
+---
+title: "Lecture 17"
+author: "Grace Lee"
+date: "May 29, 2018"
+output: html_document
+---
+# Section 1. Set up Cytoscape and the igraph R package
+
+## Make sure Cytoscape is up and running
+install packages (one time only)
+```{r}
+# CRAN packages
+#install.packages( c("igraph", "RColorBrewer") )
+
+# Bioconductor package
+#source("https://bioconductor.org/biocLite.R")
+#biocLite("RCy3")
+```
+
+Load Packages
+```{r}
+library(RCy3)
+library(igraph)
+library(RColorBrewer)
+```
+
+## First Contact
+These functions are a convenient way to verify a connection to Cytoscape and for logging the versions of CyREST and Cytoscape in your scripts.
+```{r}
+library(RCy3)
+cwd <- demoSimpleGraph()
+```
+
+```{r}
+layoutNetwork(cwd, 'force-directed')
+
+# choose any of the other possible layouts e.g.:
+possible.layout.names <- getLayoutNames(cwd)
+layoutNetwork (cwd, possible.layout.names[1])
+
+# Test the connection to Cytoscape
+ping(cwd)
+```
+
+## Switch Styles
+
+View in Cytoscape
+```{r}
+setVisualStyle(cwd, "Marquee")
+```
+
+Save Image
+```{r}
+saveImage(cwd, file.name = "demo", image.type = "png", h=350)
+```
+
+other styles
+```{r}
+styles <- getVisualStyleNames(cwd)
+styles
+```
+
+```{r}
+#setVisualStyle(cwd, styles[13])
+#setVisualStyle(cwd, styles[18])
+```
+
+#Section 2: Read out metagenomics data
+```{r}
+# scripts for processing locates in "inst/data-raw/"
+prok_vir_cor <- read.delim("virus_prok_cor_abundant.tsv", stringsAsFactors = FALSE)
+
+#look at first 6 rows
+head(prok_vir_cor)
+```
+
+Use the igraph package to convert the co-occurrence dataframe into a network that we can send to Cytoscape
+```{r}
+g <- graph.data.frame(prok_vir_cor, directed = FALSE)
+```
+
+Check class of new object g
+```{r}
+class(g)
+print.igraph(g)
+```
+
+Take a look at graph
+```{r}
+plot(g)
+```
+
+We can tune lots of plot attributes (see the help page ?igraph.plotting for details). Here we turn down our vertex size from the default value of 15 and turn of our vertex labels.
+```{r}
+plot(g, vertex.size = 3, vertex.label = NA)
+```
+
+Note that we can query (and set) vertex and edge attributes with the V() and E() functions respectively:
+```{r}
+V(g)
+```
+
+```{r}
+E(g)
+```
+
+# Section 3: Read in taxonomic classification
+```{r}
+phage_id_affiliation <- read.delim("phage_ids_with_affiliation.tsv")
+head(phage_id_affiliation)
+```
+
+```{r}
+bac_id_affi <- read.delim("prok_tax_from_silva.tsv")
+head(bac_id_affi)
+```
+
+#Section 4: Add the taxonomic classifications to the network and then send network to Cytoscape
+
+```{r}
+## Create our gene network 'genenet' for cytoscape
+genenet.nodes <- as.data.frame(vertex.attributes(g))
+
+## not all have classification, so create empty columns
+genenet.nodes$phage_aff <- rep("not_class", nrow(genenet.nodes))
+genenet.nodes$Tax_order <- rep("not_class", nrow(genenet.nodes))
+genenet.nodes$Tax_subfamily <- rep("not_class", nrow(genenet.nodes))
+
+for (row in seq_along(1:nrow(genenet.nodes))){
+  if (genenet.nodes$name[row] %in% phage_id_affiliation$first_sheet.Phage_id_network){
+    id_name <- as.character(genenet.nodes$name[row])
+    aff_to_add <- unique(subset(phage_id_affiliation,
+                                first_sheet.Phage_id_network == id_name,
+                                select = c(phage_affiliation,
+                                           Tax_order,
+                                           Tax_subfamily)))
+    genenet.nodes$phage_aff[row] <- as.character(aff_to_add$phage_affiliation)
+    genenet.nodes$Tax_order[row] <- as.character(aff_to_add$Tax_order)
+    genenet.nodes$Tax_subfamily[row] <- as.character(aff_to_add$Tax_subfamily)
+  }
+}
+```
+
+do the same for proks
+```{r}
+genenet.nodes$prok_king <- rep("not_class", nrow(genenet.nodes))
+genenet.nodes$prok_tax_phylum <- rep("not_class", nrow(genenet.nodes))
+genenet.nodes$prok_tax_class <- rep("not_class", nrow(genenet.nodes))
+
+for (row in seq_along(1:nrow(genenet.nodes))){
+  if (genenet.nodes$name[row] %in% bac_id_affi$Accession_ID){
+    aff_to_add <- unique(subset(bac_id_affi,
+                                Accession_ID == as.character(genenet.nodes$name[row]),
+                                select = c(Kingdom,
+                                           Phylum,
+                                           Class)))
+    
+    genenet.nodes$prok_king[row] <- as.character(aff_to_add$Kingdom)
+    genenet.nodes$prok_tax_phylum[row] <- as.character(aff_to_add$Phylum)
+    genenet.nodes$prok_tax_class[row] <- as.character(aff_to_add$Class)
+  }
+}
+```
+
+Add to the network the data related to the connections between the organisms, the edge data, and then prepare to send the nodes and edges to Cytoscape using the function cyPlot()
+```{r}
+genenet.edges <- data.frame(igraph::as_edgelist(g))
+names(genenet.edges) <- c("name.1", "name.2")
+
+genenet.edges$Weight <- igraph:: edge_attr(g)[[1]]
+
+genenet.edges$name.1 <- as.character(genenet.edges$name.1)
+genenet.edges$name.2 <- as.character(genenet.edges$name.2)
+genenet.nodes$name <- as.character(genenet.nodes$name)
+
+ug <- cyPlot(genenet.nodes, genenet.edges)
+```
+
+## Send network to Cytoscape using RCy3
+To begin we create a connection in R that we can use to manipulate the networks and then we will delete any windows that were already in Cytoscape so that we don’t use up all of our memory.
+```{r}
+cy <- CytoscapeConnection()
+deleteAllWindows(cy)
+```
+
+```{r}
+cw <- CytoscapeWindow("Tara oceans", graph = ug, overwriteWindow = TRUE)
+```
+
+```{r}
+displayGraph(cw)
+layoutNetwork(cw)
+fitContent(cw)
+```
+
+#Section 5: Colot network by prokaryotic phylum
+```{r}
+families_to_colour <- unique(genenet.nodes$prok_tax_phylum)
+families_to_colour <- families_to_colour[!families_to_colour %in% "not_class"]
+node.colour <- RColorBrewer::brewer.pal(length(families_to_colour), "Set3")
+```
+
+Use color from Rcolorbrewer to colot the nodes in Cytoscape
+```{r}
+setNodeColorRule(cw, "prok_tax_phylum", families_to_colour, node.colour, "lookup", default.color = "#ffffff")
+```
+
+```{r}
+displayGraph(cw)
+layoutNetwork(cw)
+fitContent(cw)
+```
+
+## Set node shape to reflect virus or prokaryote
+```{r}
+shapes_for_nodes <- c("DIAMOND")
+phage_names <- grep("ph_", genenet.nodes$name, value = TRUE)
+setNodeShapeRule(cw, "label", phage_names, shapes_for_nodes)
+```
+
+```{r}
+displayGraph(cw)
+fitContent(cw)
+```
+
+## Color edges of phage nodes
+```{r}
+setDefaultNodeBorderWidth(cw, 5)
+families_to_colour <- c("Podoviridae", "Siphoviridae", "Myoviridae")
+node.colour <- RColorBrewer::brewer.pal(length(families_to_colour), "Dark2")
+setNodeBorderColorRule(cw, "Tab_subfamily", families_to_colour, node.colour, "lookup", default.color = "#000000")
+```
+
+```{r}
+displayGraph(cw)
+fitContent(cw)
+```
+
+# Section 6: Setup a layout to minimize overlap of nodes
+```{r}
+getLayoutNames(cw)
+```
+
+```{r}
+getLayoutPropertyNames(cw, layout.name = "force-directed")
+```
+
+```{r}
+getLayoutPropertyValue(cw, "force-directed", "defaultSpringLength")
+```
+
+```{r}
+getLayoutPropertyValue(cw, "force-directed", "numIterations")
+```
+
+Once we decide on the properties we want, we can go ahead and set them like this:
+
+```{r}
+#setLayoutProperties(cw,
+#                    layout.name = force-directed",
+#                    list(defaultSpringLength = 20,
+#                         "numIterations" = 200))
+#layoutNetwork(cw,
+#              layout.name = "force-directed")
+#fitContent(cw)
+```
+
+```{r}
+layoutNetwork(cw, layout.name = "force-directed")
+fitContent(cw)
+```
+
+#Section 7: Examine network properties
+```{r}
+## initiate a new node attribute
+ug2 <- initNodeAttribute(graph = ug, "degree", "numeric", 0.0)
+
+## degree from graph package for undirected graphs not working well,
+## so instead using igraph to calculate this from the original graph
+nodeData(ug2, nodes(ug2), "degree") <- igraph::degree(g)
+
+cw2 <- CytoscapeWindow("Tara oceans with degree",
+                      graph = ug2,
+                      overwriteWindow = TRUE)
+```
+
+```{r}
+displayGraph(cw2)
+layoutNetwork(cw2)
+```
+
+Size by degree
+```{r}
+degree_control_points <- c(min(igraph::degree(g)), mean(igraph:: degree(g)), max(igraph::degree(g)))
+node_sizes <- c(20,20,80,100,110)
+setNodeSizeRule(cw2, "degree", degree_control_points, node_sizes, mode = "interpolate")
+```
+
+```{r}
+layoutNetwork(cw2, "force-directed")
+```
