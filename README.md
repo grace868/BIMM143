@@ -1,5 +1,8 @@
-# Bioinformatics Class BIMM-143
+# Bioinformatics Class (BIMM-143)
 
-This is my Bioinformatics class from UC San Diego is S18. 
+This is my Bioinformatics class from UC San Diego in S18. 
 
 I can edit online too!
+
+Available markdown files include:
+[Link](URL)
